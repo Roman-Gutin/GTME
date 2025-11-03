@@ -1,0 +1,59 @@
+# Snowflake Project Configuration for Google Docs Tools
+# Use with Snow CLI: snow sql -f <file.sql> or snow stage copy
+
+definition_version: 1
+project_name: gsuite_tools
+
+# Default connection settings
+# Override with: snow --connection <name> <command>
+default_connection: default
+
+# Stages configuration
+stages:
+  gsuite_stage:
+    database: TEST
+    schema: PUBLIC
+    name: GSUITE_STAGE
+    comment: "Stage for Google Workspace Python modules"
+
+# Python UDF artifacts
+artifacts:
+  - name: gsuite_tools_init
+    type: python
+    src: gsuite_tools/__init__.py
+    stage: "@TEST.PUBLIC.GSUITE_STAGE/gsuite_tools/"
+    
+  - name: gsuite_tools_handler
+    type: python
+    src: gsuite_tools/gdocs_handler.py
+    stage: "@TEST.PUBLIC.GSUITE_STAGE/gsuite_tools/"
+
+# SQL scripts to execute
+sql_scripts:
+  - name: setup
+    file: snowflake_google_docs_complete_setup.sql
+    description: "Complete setup for Google Docs integration"
+    
+  - name: test
+    file: test_tools.sql
+    description: "Comprehensive test suite for Google Docs tools"
+
+# Environment-specific configurations
+environments:
+  dev:
+    database: TEST
+    schema: PUBLIC
+    role: ACCOUNTADMIN
+    
+  prod:
+    database: PROD
+    schema: PUBLIC
+    role: SYSADMIN
+
+# Metadata
+metadata:
+  version: "1.0.0"
+  author: "Roman Gutin"
+  description: "Google Docs integration for Snowflake with 25+ UDF operations"
+  repository: "https://github.com/Roman-Gutin/GTME"
+
