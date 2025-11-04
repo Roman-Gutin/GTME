@@ -1,0 +1,12 @@
+# Salesforce Python Wrapper Library Dependencies
+# For Snowflake Cortex Agent Integration
+
+# Core Salesforce API client
+simple-salesforce==1.12.5
+
+# HTTP requests for SOAP API
+requests>=2.31.0
+
+# Optional: Data manipulation
+# pandas>=2.0.0  # Uncomment if needed for data processing
+
