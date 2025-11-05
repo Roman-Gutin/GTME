@@ -1,0 +1,283 @@
+[
+  {
+    "tool_spec": {
+      "type": "generic",
+      "name": "create_drive_folder",
+      "description": "Create a new folder in Google Drive. Optionally specify a parent folder. Returns folder ID and web link. Use this to organize files.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the new folder"
+          },
+          "parent_id": {
+            "type": "string",
+            "description": "Parent folder ID (optional, creates in root if not specified)"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    }
+  },
+  {
+    "tool_spec": {
+      "type": "generic",
+      "name": "list_folder_contents",
+      "description": "List all files and folders within a specific Google Drive folder. Returns metadata for each item including name, type, ID, and web link. Use this to browse folder contents.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "folder_id": {
+            "type": "string",
+            "description": "The Google Drive folder ID to list contents from"
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Maximum number of items to return (1-1000). Default: 100"
+          },
+          "order_by": {
+            "type": "string",
+            "description": "Sort order (e.g., 'name', 'modifiedTime desc'). Optional."
+          }
+        },
+        "required": [
+          "folder_id"
+        ]
+      }
+    }
+  },
+  {
+    "tool_spec": {
+      "type": "generic",
+      "name": "get_folder_metadata",
+      "description": "Get comprehensive metadata for a Google Drive folder including permissions and sharing settings. Use this to inspect folder details.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "folder_id": {
+            "type": "string",
+            "description": "The Google Drive folder ID"
+          }
+        },
+        "required": [
+          "folder_id"
+        ]
+      }
+    }
+  },
+  {
+    "tool_spec": {
+      "type": "generic",
+      "name": "update_drive_folder",
+      "description": "Update Google Drive folder properties including name, description, and color. Use this to rename or organize folders.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "folder_id": {
+            "type": "string",
+            "description": "The folder ID to update"
+          },
+          "name": {
+            "type": "string",
+            "description": "New folder name (optional)"
+          },
+          "description": {
+            "type": "string",
+            "description": "New folder description (optional)"
+          },
+          "folder_color_rgb": {
+            "type": "string",
+            "description": "Folder color in RGB hex format like '#ff0000' for red (optional)"
+          }
+        },
+        "required": [
+          "folder_id"
+        ]
+      }
+    }
+  },
+  {
+    "tool_spec": {
+      "type": "generic",
+      "name": "delete_drive_file",
+      "description": "Delete a file or folder from Google Drive (moves to trash). Use this to remove unwanted files or folders.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string",
+            "description": "The file or folder ID to delete"
+          }
+        },
+        "required": [
+          "file_id"
+        ]
+      }
+    }
+  },
+  {
+    "tool_spec": {
+      "type": "generic",
+      "name": "share_drive_folder",
+      "description": "Share a Google Drive folder with a user or group by email. Specify permission level (reader, writer, commenter). Use this to grant folder access.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "folder_id": {
+            "type": "string",
+            "description": "The folder ID to share"
+          },
+          "email": {
+            "type": "string",
+            "description": "Email address of the user or group to share with"
+          },
+          "role": {
+            "type": "string",
+            "description": "Permission role: 'reader' (view only), 'writer' (can edit), 'commenter' (can comment). Default: 'reader'"
+          },
+          "send_notification": {
+            "type": "boolean",
+            "description": "Whether to send email notification to the user. Default: false"
+          }
+        },
+        "required": [
+          "folder_id",
+          "email"
+        ]
+      }
+    }
+  },
+  {
+    "tool_spec": {
+      "type": "generic",
+      "name": "share_drive_file",
+      "description": "Share a Google Drive file with a user or group by email. Specify permission level (reader, writer, commenter). Use this to grant file access.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string",
+            "description": "The file ID to share"
+          },
+          "email": {
+            "type": "string",
+            "description": "Email address of the user or group to share with"
+          },
+          "role": {
+            "type": "string",
+            "description": "Permission role: 'reader' (view only), 'writer' (can edit), 'commenter' (can comment). Default: 'reader'"
+          },
+          "send_notification": {
+            "type": "boolean",
+            "description": "Whether to send email notification to the user. Default: false"
+          }
+        },
+        "required": [
+          "file_id",
+          "email"
+        ]
+      }
+    }
+  },
+  {
+    "tool_spec": {
+      "type": "generic",
+      "name": "get_file_metadata",
+      "description": "Get comprehensive metadata for a Google Drive file including permissions, MIME type, size, and sharing settings. Use this to inspect file details.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string",
+            "description": "The Google Drive file ID"
+          }
+        },
+        "required": [
+          "file_id"
+        ]
+      }
+    }
+  },
+  {
+    "tool_spec": {
+      "type": "generic",
+      "name": "rename_drive_file",
+      "description": "Rename a file or folder in Google Drive. Use this to change file or folder names.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string",
+            "description": "The file or folder ID to rename"
+          },
+          "new_name": {
+            "type": "string",
+            "description": "New name for the file or folder"
+          }
+        },
+        "required": [
+          "file_id",
+          "new_name"
+        ]
+      }
+    }
+  },
+  {
+    "tool_spec": {
+      "type": "generic",
+      "name": "create_drive_file",
+      "description": "Create a new file in Google Drive with specified name and MIME type. Optionally place it in a specific folder. Use this to create empty files.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the new file"
+          },
+          "mime_type": {
+            "type": "string",
+            "description": "MIME type of the file (e.g., 'text/plain', 'application/pdf'). Default: 'text/plain'"
+          },
+          "parent_id": {
+            "type": "string",
+            "description": "Parent folder ID to create the file in (optional)"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    }
+  },
+  {
+    "tool_spec": {
+      "type": "generic",
+      "name": "update_file_content",
+      "description": "Update the content of an existing file in Google Drive. Use this to modify text file contents.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string",
+            "description": "The file ID to update"
+          },
+          "content": {
+            "type": "string",
+            "description": "New file content as text"
+          },
+          "mime_type": {
+            "type": "string",
+            "description": "MIME type of the content. Default: 'text/plain'"
+          }
+        },
+        "required": [
+          "file_id",
+          "content"
+        ]
+      }
+    }
+  }
+]

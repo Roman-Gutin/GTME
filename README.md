@@ -34,8 +34,20 @@ cd GTME
 
 # Copy and edit environment file
 cp .env.example .env
-# Edit .env with your Snowflake account and Google OAuth credentials
 ```
+
+**Edit `.env` with your credentials:**
+- `SNOWFLAKE_ACCOUNT` - Your Snowflake account identifier
+- `SNOWFLAKE_USER` - Will be created by setup script (use `AGENT_SERVICE_USER`)
+- `GOOGLE_CLIENT_ID` - From Google Cloud Console OAuth credentials
+- `GOOGLE_CLIENT_SECRET` - From Google Cloud Console OAuth credentials
+
+**Get Google OAuth Credentials:**
+1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+2. Create a new project or select existing
+3. Enable APIs: Google Docs, Google Sheets, Google Drive
+4. Create OAuth 2.0 Client ID (Application type: Desktop app)
+5. Copy Client ID and Client Secret to `.env`
 
 ### 2. Run Deployment Script
 
@@ -53,9 +65,9 @@ deployment\deploy.bat
 The script will:
 1. ✅ Validate prerequisites
 2. ✅ Create Snowflake infrastructure (user, role, database, warehouse)
-3. ✅ Set up Google OAuth integration
-4. ✅ Deploy Google Workspace functions
-5. ✅ Create the GTME Cortex AI Agent
+3. ✅ Set up Google OAuth integration (you'll need to authorize via browser)
+4. ✅ Upload Python handlers and create UDFs
+5. ✅ Create the GTME Cortex AI Agent with all 22 tools
 
 ### 3. Access Your Agent
 
@@ -138,16 +150,24 @@ This creates:
 
 ### Step 3: Setup Google OAuth
 
+Get refresh token:
 ```bash
 python tools/gsuite/get_oauth_url.py
 ```
 
-Follow the URL, authorize, and the script will create the OAuth secret in Snowflake.
+Follow the instructions, authorize via browser, and copy the refresh token.
+
+Create OAuth secret in Snowflake:
+```bash
+python tools/gsuite/create_oauth_secret.py <refresh_token>
+```
 
 ### Step 4: Deploy Google Workspace Tools
 
+Upload handlers and create UDFs:
 ```bash
 python deployment/deploy_gsuite.py
+python deployment/create_udfs.py
 ```
 
 ### Step 5: Create Agent
@@ -206,5 +226,5 @@ MIT License
 
 ---
 
-**Built with ❤️ for GTM teams using Snowflake Cortex AI**
+*Production-ready reference implementation for Snowflake Cortex AI Agents*
 

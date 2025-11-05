@@ -73,17 +73,21 @@ echo ===========================================================================
 echo Step 3: Google OAuth Setup
 echo ============================================================================
 
-set /p oauth_done="Have you already set up Google OAuth? (y/n): "
+set /p oauth_done="Have you already created the OAuth secret in Snowflake? (y/n): "
 
 if /i not "%oauth_done%"=="y" (
-    echo [WARNING] Please follow these steps:
-    echo 1. Go to Google Cloud Console
-    echo 2. Create OAuth 2.0 credentials (Desktop application^)
-    echo 3. Add credentials to .env file
-    echo 4. Run: python tools/gsuite/get_oauth_url.py
-    pause
+    echo [INFO] Getting OAuth refresh token...
+    echo.
+    echo 1. Running get_oauth_url.py to show instructions...
+    python tools\gsuite\get_oauth_url.py
+    echo.
+    set /p refresh_token="2. Enter the refresh token you received: "
+    echo.
+    echo 3. Creating OAuth secret in Snowflake...
+    python tools\gsuite\create_oauth_secret.py %refresh_token%
+    echo [OK] OAuth secret created
 ) else (
-    echo [OK] Google OAuth already configured
+    echo [OK] OAuth secret already configured
 )
 
 echo.
@@ -95,13 +99,14 @@ echo ===========================================================================
 echo Step 4: Deploying Google Workspace Tools
 echo ============================================================================
 
-if not exist deployment\deploy_gsuite.py (
-    echo [WARNING] deployment/deploy_gsuite.py not found - skipping for now
-    echo You'll need to manually deploy Google Workspace functions
-) else (
-    python deployment\deploy_gsuite.py
-    echo [OK] Google Workspace tools deployed
-)
+echo [INFO] Uploading Python handlers to Snowflake stage...
+python deployment\deploy_gsuite.py
+echo [OK] Handlers uploaded
+
+echo.
+echo [INFO] Creating UDFs...
+python deployment\create_udfs.py
+echo [OK] UDFs created
 
 echo.
 

@@ -89,22 +89,26 @@ read -p "Press Enter after updating .env with the PAT token..."
 export $(cat .env | grep -v '^#' | xargs)
 
 # ============================================================================
-# Step 3: Setup Google OAuth (if not already done)
+# Step 3: Setup Google OAuth
 # ============================================================================
 print_header "Step 3: Google OAuth Setup"
 
-echo "Have you already set up Google OAuth? (y/n)"
+echo "Have you already created the OAuth secret in Snowflake? (y/n)"
 read -r oauth_done
 
 if [ "$oauth_done" != "y" ]; then
-    print_warning "Please follow these steps:"
-    echo "1. Go to Google Cloud Console"
-    echo "2. Create OAuth 2.0 credentials (Desktop application)"
-    echo "3. Add credentials to .env file"
-    echo "4. Run: python tools/gsuite/get_oauth_url.py"
-    read -p "Press Enter after completing OAuth setup..."
+    print_warning "Getting OAuth refresh token..."
+    echo ""
+    echo "1. Running get_oauth_url.py to show instructions..."
+    python tools/gsuite/get_oauth_url.py
+    echo ""
+    read -p "2. Enter the refresh token you received: " refresh_token
+    echo ""
+    echo "3. Creating OAuth secret in Snowflake..."
+    python tools/gsuite/create_oauth_secret.py "$refresh_token"
+    print_step "OAuth secret created"
 else
-    print_step "Google OAuth already configured"
+    print_step "OAuth secret already configured"
 fi
 
 # ============================================================================
@@ -112,14 +116,14 @@ fi
 # ============================================================================
 print_header "Step 4: Deploying Google Workspace Tools"
 
-# Check if deployment script exists
-if [ ! -f deployment/deploy_gsuite.py ]; then
-    print_warning "deployment/deploy_gsuite.py not found - skipping for now"
-    print_warning "You'll need to manually deploy Google Workspace functions"
-else
-    python deployment/deploy_gsuite.py
-    print_step "Google Workspace tools deployed"
-fi
+print_warning "Uploading Python handlers to Snowflake stage..."
+python deployment/deploy_gsuite.py
+print_step "Handlers uploaded"
+
+echo ""
+print_warning "Creating UDFs..."
+python deployment/create_udfs.py
+print_step "UDFs created"
 
 # ============================================================================
 # Step 5: Create Agent

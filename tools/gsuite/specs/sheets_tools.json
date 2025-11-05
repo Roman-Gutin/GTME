@@ -1,0 +1,156 @@
+[
+  {
+    "tool_spec": {
+      "type": "generic",
+      "name": "create_google_sheet",
+      "description": "Create a new Google Sheet with a title. Returns the spreadsheet ID and web link. Use this to start a new spreadsheet.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Title of the new spreadsheet"
+          }
+        },
+        "required": [
+          "title"
+        ]
+      }
+    }
+  },
+  {
+    "tool_spec": {
+      "type": "generic",
+      "name": "read_sheet_data",
+      "description": "Read data from a Google Sheet range (e.g., 'Sheet1!A1:D10'). Returns values as a 2D array. Use this to retrieve spreadsheet data.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "spreadsheet_id": {
+            "type": "string",
+            "description": "The Google Sheet ID"
+          },
+          "range_notation": {
+            "type": "string",
+            "description": "Range in A1 notation (e.g., 'Sheet1!A1:D10')"
+          }
+        },
+        "required": [
+          "spreadsheet_id",
+          "range_notation"
+        ]
+      }
+    }
+  },
+  {
+    "tool_spec": {
+      "type": "generic",
+      "name": "write_sheet_data",
+      "description": "Write data to a Google Sheet range. Provide data as a JSON string representing a 2D array. Use this to populate or overwrite spreadsheet data.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "spreadsheet_id": {
+            "type": "string",
+            "description": "The Google Sheet ID"
+          },
+          "range_notation": {
+            "type": "string",
+            "description": "Range in A1 notation (e.g., 'Sheet1!A1')"
+          },
+          "data_values": {
+            "type": "string",
+            "description": "JSON string representing a 2D array of values to write. Example: '[[\"Name\", \"Age\"], [\"Alice\", 30], [\"Bob\", 25]]'"
+          }
+        },
+        "required": [
+          "spreadsheet_id",
+          "range_notation",
+          "data_values"
+        ]
+      }
+    }
+  },
+  {
+    "tool_spec": {
+      "type": "generic",
+      "name": "append_sheet_data",
+      "description": "Append rows to the end of a Google Sheet. Provide data as a JSON string representing a 2D array. Use this to add new rows without overwriting existing data.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "spreadsheet_id": {
+            "type": "string",
+            "description": "The Google Sheet ID"
+          },
+          "range_notation": {
+            "type": "string",
+            "description": "Range to append to (e.g., 'Sheet1!A:D')"
+          },
+          "data_values": {
+            "type": "string",
+            "description": "JSON string representing a 2D array of values to append. Example: '[[\"Charlie\", 28], [\"Diana\", 32]]'"
+          }
+        },
+        "required": [
+          "spreadsheet_id",
+          "range_notation",
+          "data_values"
+        ]
+      }
+    }
+  },
+  {
+    "tool_spec": {
+      "type": "generic",
+      "name": "update_cell",
+      "description": "Update a single cell in a Google Sheet. Use this to modify individual cell values.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "spreadsheet_id": {
+            "type": "string",
+            "description": "The Google Sheet ID"
+          },
+          "cell_notation": {
+            "type": "string",
+            "description": "Cell reference (e.g., 'Sheet1!A1')"
+          },
+          "value": {
+            "type": "string",
+            "description": "New cell value"
+          }
+        },
+        "required": [
+          "spreadsheet_id",
+          "cell_notation",
+          "value"
+        ]
+      }
+    }
+  },
+  {
+    "tool_spec": {
+      "type": "generic",
+      "name": "clear_sheet_data",
+      "description": "Clear data from a Google Sheet range without deleting the cells. Use this to remove content while preserving structure.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "spreadsheet_id": {
+            "type": "string",
+            "description": "The Google Sheet ID"
+          },
+          "range_notation": {
+            "type": "string",
+            "description": "Range to clear (e.g., 'Sheet1!A1:D10')"
+          }
+        },
+        "required": [
+          "spreadsheet_id",
+          "range_notation"
+        ]
+      }
+    }
+  }
+]
