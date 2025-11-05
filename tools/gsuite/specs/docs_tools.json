@@ -1,0 +1,97 @@
+[
+  {
+    "name": "create_google_doc",
+    "description": "Create a new Google Doc with a title. Returns the document ID and web link. Use this to start a new document.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Title of the new document"
+        }
+      },
+      "required": ["title"]
+    }
+  },
+  {
+    "name": "read_google_doc",
+    "description": "Read the entire content of a Google Doc as plain text. Use this to retrieve document content.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "document_id": {
+          "type": "string",
+          "description": "The Google Doc ID to read"
+        }
+      },
+      "required": ["document_id"]
+    }
+  },
+  {
+    "name": "insert_text_google_doc",
+    "description": "Insert text at a specific position in a Google Doc. Position 1 is the start of the document. Use this to add content to a document.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "document_id": {
+          "type": "string",
+          "description": "The Google Doc ID"
+        },
+        "text": {
+          "type": "string",
+          "description": "Text to insert"
+        },
+        "index_pos": {
+          "type": "integer",
+          "description": "Position to insert at (1 = start of document)"
+        }
+      },
+      "required": ["document_id", "text", "index_pos"]
+    }
+  },
+  {
+    "name": "delete_content_google_doc",
+    "description": "Delete content from a Google Doc between start and end positions. Use this to remove text from a document.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "document_id": {
+          "type": "string",
+          "description": "The Google Doc ID"
+        },
+        "start_index": {
+          "type": "integer",
+          "description": "Start position of content to delete"
+        },
+        "end_index": {
+          "type": "integer",
+          "description": "End position of content to delete"
+        }
+      },
+      "required": ["document_id", "start_index", "end_index"]
+    }
+  },
+  {
+    "name": "replace_all_text_google_doc",
+    "description": "Find and replace all occurrences of text in a Google Doc. Use this to update specific text throughout the document.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "document_id": {
+          "type": "string",
+          "description": "The Google Doc ID"
+        },
+        "find_text": {
+          "type": "string",
+          "description": "Text to find"
+        },
+        "replace_text": {
+          "type": "string",
+          "description": "Text to replace with"
+        }
+      },
+      "required": ["document_id", "find_text", "replace_text"]
+    }
+  }
+]
+
