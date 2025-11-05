@@ -69,7 +69,20 @@ The script will:
 4. ✅ Upload Python handlers and create UDFs
 5. ✅ Create the GTME Cortex AI Agent with all 22 tools
 
-### 3. Access Your Agent
+### 3. Verify Deployment (Optional)
+
+```bash
+snow sql -f deployment/test_deployment.sql
+```
+
+This will verify:
+- ✅ Stage created with 4 Python files
+- ✅ External access integration configured
+- ✅ OAuth secret created
+- ✅ All 22 UDFs registered (5 Docs, 6 Sheets, 11 Drive)
+- ✅ Agent created in snowflake_intelligence.agents
+
+### 4. Access Your Agent
 
 1. Go to [Snowsight](https://app.snowflake.com/)
 2. Navigate to **AI & ML** → **Cortex** → **Agents**

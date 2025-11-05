@@ -132,6 +132,9 @@ echo ===========================================================================
 echo.
 echo Your GTME Cortex AI Agent is ready!
 echo.
+echo Verify deployment (optional):
+echo   snow sql -f deployment\test_deployment.sql
+echo.
 echo Next Steps:
 echo   1. Go to Snowsight: https://app.snowflake.com/
 echo   2. Navigate to: AI ^& ML -^> Cortex -^> Agents
