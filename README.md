@@ -2,7 +2,7 @@
 
 > **Solve CRM hygiene with AI.** A connected agent that automates the most common and dreadful problem in sales: keeping your CRM up to date.
 
-Deploy a fully functional AI agent powered by Claude Sonnet 4 with access to the tools sellers actually use—Google Workspace and Salesforce—in under 30 minutes.
+Deploy a fully functional AI agent with access to the tools sellers actually use—Google Workspace and Salesforce—in under 30 minutes.
 
 ## 🎯 What You Get
 
@@ -10,7 +10,6 @@ Deploy a fully functional AI agent powered by Claude Sonnet 4 with access to the
 
 - **📄 Google Workspace** (22 tools): Docs, Sheets, Drive
 - **💼 Salesforce** (11 tools): Accounts, Opportunities, Contacts, Discovery
-- **🤖 Claude Sonnet 4**: Industry-leading AI model for reasoning and execution
 
 **Automate CRM Hygiene:**
 - Update Salesforce opportunities from meeting notes in Google Docs
@@ -19,11 +18,7 @@ Deploy a fully functional AI agent powered by Claude Sonnet 4 with access to the
 - Generate proposals in Google Docs using Salesforce opportunity data
 - Keep contact information current across both platforms
 
-**Production-Ready Infrastructure:**
-- Single-command deployment (30 minutes)
-- Flexible deployment (Google only, Salesforce only, or both)
-- Extensible architecture for adding more integrations
-- Enterprise-grade security with Snowflake RBAC
+> **Coming Next:** Slack integration, Web Search, and Outbound email automation
 
 ## 📊 Tool Breakdown
 
@@ -139,35 +134,40 @@ This system deploys a **Snowflake Cortex AI Agent** that uses **Snowpark Python 
 This system implements enterprise-grade security using Snowflake's Role-Based Access Control (RBAC).
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Snowflake Account                        │
-│                                                             │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │              ACCOUNTADMIN Role                       │  │
-│  │  - Creates all infrastructure (one-time setup)       │  │
-│  │  - Grants permissions to service role                │  │
-│  └────────────┬─────────────────────────────────────────┘  │
-│               │ Grants permissions                          │
-│               ▼                                             │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │           AGENTS_SERVICE_ROLE                        │  │
-│  │  - Owns all agent infrastructure                     │  │
-│  │  - Can create/modify UDFs                            │  │
-│  │  - Can use external access integrations              │  │
-│  │  - Can read/write secrets                            │  │
-│  │  - Can execute agent operations                      │  │
-│  └────────────┬─────────────────────────────────────────┘  │
-│               │ Assigned to                                 │
-│               ▼                                             │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │         AGENT_SERVICE_USER (TYPE=SERVICE)            │  │
-│  │  - Service account for agent operations              │  │
-│  │  - Uses Personal Access Token (PAT) for REST API     │  │
-│  │  - Requires network policy for PAT usage             │  │
-│  │  - Executes UDFs on behalf of agent                  │  │
-│  └──────────────────────────────────────────────────────┘  │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                    Snowflake Account                                             │
+│                                                                                                  │
+│  ┌────────────────────────────────────┐          ┌──────────────────────────────────────────┐  │
+│  │      ACCOUNTADMIN Role             │          │         AGENTS_DEMO Database             │  │
+│  │  - Creates infrastructure          │──────────│  - Owned by AGENTS_SERVICE_ROLE          │  │
+│  │  - Grants permissions              │  Creates │  - Contains: PUBLIC schema               │  │
+│  └────────────┬───────────────────────┘          │             AGENTS_STAGE                 │  │
+│               │                                  │             33 UDFs                      │  │
+│               │ GRANT ROLE                       │             Secrets                      │  │
+│               │ AGENTS_SERVICE_ROLE              │             External Access Integrations │  │
+│               │ TO USER                          └──────────────────────────────────────────┘  │
+│               │ AGENT_SERVICE_USER                                                             │
+│               ▼                                                                                │
+│  ┌────────────────────────────────────┐          ┌──────────────────────────────────────────┐  │
+│  │     AGENTS_SERVICE_ROLE            │          │         Key Grants                       │  │
+│  │  - Owns all infrastructure         │◄─────────│  USAGE on AGENTS_DEMO                    │  │
+│  │  - CREATE FUNCTION                 │  Owns    │  USAGE on AGENTS_WH                      │  │
+│  │  - USAGE on integrations           │          │  CREATE FUNCTION on PUBLIC               │  │
+│  │  - READ on secrets                 │          │  USAGE on GOOGLE_EXTERNAL_ACCESS         │  │
+│  │  - EXECUTE on UDFs                 │          │  USAGE on SALESFORCE_EXTERNAL_ACCESS     │  │
+│  └────────────┬───────────────────────┘          │  READ on google_oauth_secret             │  │
+│               │                                  │  READ on salesforce_username             │  │
+│               │ Assigned to                      │  EXECUTE on all 33 UDFs                  │  │
+│               ▼                                  └──────────────────────────────────────────┘  │
+│  ┌────────────────────────────────────┐                                                        │
+│  │   AGENT_SERVICE_USER (SERVICE)     │          ┌──────────────────────────────────────────┐  │
+│  │  - Executes agent operations       │          │      AGENTS_WH Warehouse                 │  │
+│  │  - Uses PAT for REST API           │──────────│  - Owned by AGENTS_SERVICE_ROLE          │  │
+│  │  - Requires network policy         │  Uses    │  - Size: X-SMALL                         │  │
+│  │  - Runs UDFs                       │          │  - Auto-suspend: 60 seconds              │  │
+│  └────────────────────────────────────┘          └──────────────────────────────────────────┘  │
+│                                                                                                  │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 #### Key Security Components
@@ -714,47 +714,123 @@ GTME/
 
 ---
 
-## 🎛️ Deployment Scenarios
+## 🔄 Agent Workflow Example: CRM Hygiene Automation
 
-### Scenario 1: Google Workspace Only
+### Scenario: Update Salesforce from Meeting Notes
 
-**Use case:** You only need Google Docs, Sheets, and Drive integration.
+**User prompt:**
+> "Read the meeting notes from the Google Doc titled 'Acme Corp - Discovery Call 2024-01-15' and update the Salesforce opportunity"
 
-**Configuration in `.env`:**
-```bash
-DEPLOY_GOOGLE_WORKSPACE=true
-DEPLOY_SALESFORCE=false
+**Agent execution flow:**
+
+#### Step 1: Read Google Doc
+```
+Agent thinks: "I need to find and read the Google Doc"
+
+Tool call: SEARCH_GOOGLE_DRIVE_FILES
+Parameters: {
+  "query": "Acme Corp - Discovery Call 2024-01-15",
+  "file_type": "document"
+}
+Returns: { "file_id": "1abc...xyz", "name": "Acme Corp - Discovery Call 2024-01-15" }
+
+Tool call: READ_GOOGLE_DOC
+Parameters: { "document_id": "1abc...xyz" }
+Returns: {
+  "content": "Meeting with John Smith, CTO at Acme Corp.
+              Budget: $150K confirmed
+              Timeline: Q2 2024 implementation
+              Next steps: Send proposal by Friday
+              Decision makers: John Smith (CTO), Sarah Johnson (VP Eng)
+              Pain points: Current system lacks API integrations..."
+}
 ```
 
-**Result:** Agent with 22 Google Workspace tools
+#### Step 2: Find Salesforce Opportunity
+```
+Agent thinks: "I need to find the Acme Corp opportunity in Salesforce"
 
----
-
-### Scenario 2: Salesforce Only
-
-**Use case:** You only need Salesforce CRM integration.
-
-**Configuration in `.env`:**
-```bash
-DEPLOY_GOOGLE_WORKSPACE=false
-DEPLOY_SALESFORCE=true
+Tool call: SEARCH_SALESFORCE_OPPORTUNITIES
+Parameters: { "account_name": "Acme Corp" }
+Returns: {
+  "opportunities": [
+    {
+      "id": "006...abc",
+      "name": "Acme Corp - Enterprise License",
+      "stage": "Discovery",
+      "amount": null,
+      "close_date": null
+    }
+  ]
+}
 ```
 
-**Result:** Agent with 11 Salesforce tools
+#### Step 3: Update Opportunity
+```
+Agent thinks: "I'll update the opportunity with budget, timeline, and next steps"
 
----
-
-### Scenario 3: Full GTM Stack (Both)
-
-**Use case:** Complete go-to-market automation with both platforms.
-
-**Configuration in `.env`:**
-```bash
-DEPLOY_GOOGLE_WORKSPACE=true
-DEPLOY_SALESFORCE=true
+Tool call: UPDATE_SALESFORCE_OPPORTUNITY
+Parameters: {
+  "opportunity_id": "006...abc",
+  "fields": {
+    "Amount": 150000,
+    "CloseDate": "2024-06-30",
+    "StageName": "Proposal",
+    "NextStep": "Send proposal by Friday",
+    "Description": "Budget: $150K confirmed. Timeline: Q2 2024.
+                    Decision makers: John Smith (CTO), Sarah Johnson (VP Eng).
+                    Pain points: Current system lacks API integrations."
+  }
+}
+Returns: { "success": true, "id": "006...abc" }
 ```
 
-**Result:** Agent with 33 tools (22 Google + 11 Salesforce)
+#### Step 4: Update Account
+```
+Agent thinks: "I should also update the account with the decision makers"
+
+Tool call: GET_SALESFORCE_ACCOUNT
+Parameters: { "account_name": "Acme Corp" }
+Returns: { "id": "001...xyz", "name": "Acme Corp" }
+
+Tool call: UPDATE_SALESFORCE_ACCOUNT
+Parameters: {
+  "account_id": "001...xyz",
+  "fields": {
+    "Description": "Key contacts: John Smith (CTO), Sarah Johnson (VP Eng).
+                    Pain points: API integration gaps."
+  }
+}
+Returns: { "success": true, "id": "001...xyz" }
+```
+
+#### Agent Response
+```
+✅ I've updated your Salesforce records based on the meeting notes:
+
+Opportunity: Acme Corp - Enterprise License
+- Amount: $150,000
+- Close Date: June 30, 2024
+- Stage: Proposal (moved from Discovery)
+- Next Step: Send proposal by Friday
+- Added decision makers and pain points to description
+
+Account: Acme Corp
+- Updated with key contacts (John Smith - CTO, Sarah Johnson - VP Eng)
+- Documented pain points around API integrations
+
+Total: 4 tool calls, 2 systems updated automatically
+```
+
+**What just happened:**
+1. Agent read unstructured meeting notes from Google Docs
+2. Extracted structured data (budget, timeline, contacts, pain points)
+3. Found the correct Salesforce opportunity
+4. Updated opportunity with new information and moved stage forward
+5. Updated account with decision maker information
+6. All without manual data entry
+
+**This is CRM hygiene automation in action.**
 
 ---
 
@@ -984,18 +1060,3 @@ Built with:
 - **Salesforce APIs** - CRM integration
 
 ---
-
-## 📞 Support
-
-For issues or questions:
-1. Check the [Troubleshooting](#-troubleshooting) section
-2. Review integration-specific documentation
-3. Open an issue on GitHub
-
----
-
-**🚀 Ready to deploy? Run `./deploy.sh` and get started in 30 minutes!**
-
----
-
-*Production-ready reference implementation for Snowflake Cortex AI Agents with Google Workspace and Salesforce integration*
