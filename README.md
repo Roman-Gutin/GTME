@@ -1,18 +1,29 @@
 # GTME - Go-To-Market Engineer AI Agent
 
-> Production-ready Snowflake Cortex AI Agent with Google Workspace and Salesforce integration
+> **Solve CRM hygiene with AI.** A connected agent that automates the most common and dreadful problem in sales: keeping your CRM up to date.
 
-Deploy a fully functional AI agent powered by Claude Sonnet 4 with up to **33 tools** in under 30 minutes.
+Deploy a fully functional AI agent powered by Claude Sonnet 4 with access to the tools sellers actually use—Google Workspace and Salesforce—in under 30 minutes.
 
 ## 🎯 What You Get
 
-- **Snowflake Cortex AI Agent** with Claude Sonnet 4
-- **Flexible Deployment Options**:
-  - 📄 **Google Workspace** (22 tools): Docs, Sheets, Drive
-  - 💼 **Salesforce** (11 tools): Accounts, Opportunities, Contacts, Discovery
-  - 🚀 **Both Integrations** (33 tools): Full GTM automation
-- **Single-Command Deployment** with automated setup scripts
-- **Extensible Architecture** ready for additional integrations
+**A Connected Agent with access to the tools sellers use every day:**
+
+- **📄 Google Workspace** (22 tools): Docs, Sheets, Drive
+- **💼 Salesforce** (11 tools): Accounts, Opportunities, Contacts, Discovery
+- **🤖 Claude Sonnet 4**: Industry-leading AI model for reasoning and execution
+
+**Automate CRM Hygiene:**
+- Update Salesforce opportunities from meeting notes in Google Docs
+- Create pipeline reports in Google Sheets from Salesforce data
+- Sync account information between systems automatically
+- Generate proposals in Google Docs using Salesforce opportunity data
+- Keep contact information current across both platforms
+
+**Production-Ready Infrastructure:**
+- Single-command deployment (30 minutes)
+- Flexible deployment (Google only, Salesforce only, or both)
+- Extensible architecture for adding more integrations
+- Enterprise-grade security with Snowflake RBAC
 
 ## 📊 Tool Breakdown
 
@@ -120,6 +131,138 @@ This system deploys a **Snowflake Cortex AI Agent** that uses **Snowpark Python 
      - Model (Claude Sonnet 4)
      - Instructions (system prompt)
      - Response format
+
+---
+
+### RBAC Model
+
+This system implements enterprise-grade security using Snowflake's Role-Based Access Control (RBAC).
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Snowflake Account                        │
+│                                                             │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │              ACCOUNTADMIN Role                       │  │
+│  │  - Creates all infrastructure (one-time setup)       │  │
+│  │  - Grants permissions to service role                │  │
+│  └────────────┬─────────────────────────────────────────┘  │
+│               │ Grants permissions                          │
+│               ▼                                             │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │           AGENTS_SERVICE_ROLE                        │  │
+│  │  - Owns all agent infrastructure                     │  │
+│  │  - Can create/modify UDFs                            │  │
+│  │  - Can use external access integrations              │  │
+│  │  - Can read/write secrets                            │  │
+│  │  - Can execute agent operations                      │  │
+│  └────────────┬─────────────────────────────────────────┘  │
+│               │ Assigned to                                 │
+│               ▼                                             │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │         AGENT_SERVICE_USER (TYPE=SERVICE)            │  │
+│  │  - Service account for agent operations              │  │
+│  │  - Uses Personal Access Token (PAT) for REST API     │  │
+│  │  - Requires network policy for PAT usage             │  │
+│  │  - Executes UDFs on behalf of agent                  │  │
+│  └──────────────────────────────────────────────────────┘  │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### Key Security Components
+
+**1. Service User (AGENT_SERVICE_USER)**
+- **Type:** SERVICE (not a human user)
+- **Purpose:** Execute agent operations and UDFs
+- **Authentication:** Personal Access Token (PAT)
+- **Network Policy:** Required for PAT usage (security requirement)
+
+**2. Service Role (AGENTS_SERVICE_ROLE)**
+- **Owns:** Database, warehouse, stage, UDFs, secrets, integrations
+- **Permissions:**
+  - `USAGE` on database and warehouse
+  - `CREATE FUNCTION` on schema
+  - `USAGE` on external access integrations
+  - `READ` on secrets
+  - `EXECUTE` on all UDFs
+
+**3. Separation of Duties**
+- **ACCOUNTADMIN:** Sets up infrastructure (one-time)
+- **AGENTS_SERVICE_ROLE:** Owns and operates agent resources
+- **AGENT_SERVICE_USER:** Executes operations (no direct login)
+
+**4. Network Policy**
+```sql
+CREATE NETWORK POLICY AGENTS_SERVICE_NETWORK_POLICY
+  ALLOWED_IP_LIST = ('0.0.0.0/0')  -- Adjust for production
+  COMMENT = 'Required for service user to use PAT';
+
+ALTER USER AGENT_SERVICE_USER
+  SET NETWORK_POLICY = AGENTS_SERVICE_NETWORK_POLICY;
+```
+
+**Why this matters:**
+- Service users (TYPE=SERVICE) **cannot** use PAT without a network policy
+- Network policy defines allowed IP ranges for authentication
+- In production, restrict to specific IP ranges or VPCs
+
+**5. Secret Management**
+```sql
+-- Secrets are owned by AGENTS_SERVICE_ROLE
+CREATE SECRET google_oauth_secret
+  TYPE = GENERIC_STRING
+  SECRET_STRING = '<oauth_refresh_token>';
+
+-- Only AGENTS_SERVICE_ROLE can read
+GRANT READ ON SECRET google_oauth_secret
+  TO ROLE AGENTS_SERVICE_ROLE;
+```
+
+**6. External Access Control**
+```sql
+-- External access integrations are owned by AGENTS_SERVICE_ROLE
+CREATE EXTERNAL ACCESS INTEGRATION GOOGLE_EXTERNAL_ACCESS
+  ALLOWED_NETWORK_RULES = (google_apis_network_rule)
+  ALLOWED_AUTHENTICATION_SECRETS = (google_oauth_secret);
+
+-- Only AGENTS_SERVICE_ROLE can use
+GRANT USAGE ON INTEGRATION GOOGLE_EXTERNAL_ACCESS
+  TO ROLE AGENTS_SERVICE_ROLE;
+```
+
+#### Production Hardening
+
+**For production deployments, consider:**
+
+1. **Restrict network policy:**
+   ```sql
+   CREATE NETWORK POLICY AGENTS_SERVICE_NETWORK_POLICY
+     ALLOWED_IP_LIST = ('203.0.113.0/24')  -- Your VPC CIDR
+     BLOCKED_IP_LIST = ('0.0.0.0/0');
+   ```
+
+2. **Rotate PAT regularly:**
+   ```sql
+   -- Revoke old token
+   ALTER USER AGENT_SERVICE_USER DROP PROGRAMMATIC ACCESS TOKEN old_token;
+
+   -- Create new token
+   ALTER USER AGENT_SERVICE_USER ADD PROGRAMMATIC ACCESS TOKEN new_token;
+   ```
+
+3. **Audit access:**
+   ```sql
+   -- Query access history
+   SELECT * FROM SNOWFLAKE.ACCOUNT_USAGE.ACCESS_HISTORY
+   WHERE USER_NAME = 'AGENT_SERVICE_USER'
+   ORDER BY QUERY_START_TIME DESC;
+   ```
+
+4. **Separate environments:**
+   - Dev: `AGENTS_DEMO` database
+   - Prod: `AGENTS_PROD` database
+   - Different service users per environment
 
 ---
 
