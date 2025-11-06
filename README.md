@@ -27,6 +27,102 @@ Deploy a fully functional AI agent powered by Claude Sonnet 4 with up to **33 to
 - **Contacts** (1): Get contact details
 - **Discovery** (2): List objects, get metadata
 
+## 🏗️ Architecture Overview
+
+### How It Works
+
+This system deploys a **Snowflake Cortex AI Agent** that uses **Snowpark Python UDFs** as tools to interact with external APIs.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Snowflake Account                        │
+│                                                             │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │         Cortex AI Agent (Claude Sonnet 4)            │  │
+│  │  - Created via REST API                              │  │
+│  │  - Authenticated with Personal Access Token (PAT)    │  │
+│  │  - Receives tool specifications (JSON)               │  │
+│  └────────────┬─────────────────────────────────────────┘  │
+│               │ Calls tools                                 │
+│               ▼                                             │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │         Snowpark Python UDFs (Tools)                 │  │
+│  │  - Google Docs: CREATE_GOOGLE_DOC()                  │  │
+│  │  - Google Sheets: CREATE_GOOGLE_SHEET()              │  │
+│  │  - Salesforce: QUERY_SALESFORCE_ACCOUNTS()           │  │
+│  │  - 33 total UDFs registered                          │  │
+│  └────────────┬─────────────────────────────────────────┘  │
+│               │ Uses External Access                        │
+│               ▼                                             │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │      External Access Integrations                    │  │
+│  │  - Network rules (allowed endpoints)                 │  │
+│  │  - Secrets (OAuth tokens, API keys)                  │  │
+│  │  - Enables UDFs to call external APIs                │  │
+│  └────────────┬─────────────────────────────────────────┘  │
+│               │                                             │
+└───────────────┼─────────────────────────────────────────────┘
+                │
+                ▼
+    ┌───────────────────────┐      ┌──────────────────────┐
+    │   Google Workspace    │      │     Salesforce       │
+    │   - Docs API          │      │   - REST API         │
+    │   - Sheets API        │      │   - SOQL queries     │
+    │   - Drive API         │      │   - CRUD operations  │
+    └───────────────────────┘      └──────────────────────┘
+```
+
+### Key Components
+
+1. **Personal Access Token (PAT)**
+   - Required to authenticate REST API calls to create/manage agents
+   - Service user (`AGENT_SERVICE_USER`) needs network policy to use PAT
+   - Created via: `ALTER USER AGENT_SERVICE_USER ADD PROGRAMMATIC ACCESS TOKEN`
+
+2. **Snowpark Python UDFs**
+   - Python functions that run inside Snowflake
+   - Can be called as SQL functions: `SELECT CREATE_GOOGLE_DOC('My Doc')`
+   - Can be used as AI agent tools via tool specifications
+   - Uploaded to Snowflake stage as `.py` files
+
+3. **External Access Integrations**
+   - Allow UDFs to make HTTP requests to external APIs
+   - Require network rules (whitelist of allowed endpoints)
+   - Can attach secrets for authentication
+   - Example: `GOOGLE_EXTERNAL_ACCESS` allows calls to `*.googleapis.com`
+
+4. **Tool Specifications (JSON)**
+   - Define how the agent uses UDFs as tools
+   - Include: function name, description, parameters, return type
+   - Agent receives these specs and knows when/how to call each tool
+   - Example:
+     ```json
+     {
+       "type": "FUNCTION",
+       "function": {
+         "name": "CREATE_GOOGLE_DOC",
+         "description": "Creates a new Google Doc",
+         "parameters": {
+           "type": "object",
+           "properties": {
+             "title": {"type": "string", "description": "Document title"}
+           }
+         }
+       }
+     }
+     ```
+
+5. **Agent Deployment via REST API**
+   - Agents are created via POST to Snowflake REST API
+   - Must be in `snowflake_intelligence.agents` schema to appear in Snowsight UI
+   - Configuration includes:
+     - Tools (tool specs + UDF references)
+     - Model (Claude Sonnet 4)
+     - Instructions (system prompt)
+     - Response format
+
+---
+
 ## 📋 Prerequisites
 
 - **Snowflake account** with ACCOUNTADMIN role
@@ -189,6 +285,254 @@ Google Drive with the account name
 
 </details>
 
+---
+
+## 🔧 Technical Deep Dive
+
+### Understanding the Infrastructure
+
+#### 1. Personal Access Token (PAT) Setup
+
+**Why PAT is needed:**
+- Snowflake Cortex AI Agents are created via REST API, not SQL
+- REST API requires authentication via Personal Access Token
+- Service users (TYPE=SERVICE) need a network policy to use PATs
+
+**What the deployment does:**
+```sql
+-- Create service user
+CREATE USER AGENT_SERVICE_USER TYPE = SERVICE;
+
+-- Create network policy (required for PAT usage)
+CREATE NETWORK POLICY AGENTS_SERVICE_NETWORK_POLICY
+  ALLOWED_IP_LIST = ('0.0.0.0/0');
+
+-- Attach policy to user
+ALTER USER AGENT_SERVICE_USER
+  SET NETWORK_POLICY = AGENTS_SERVICE_NETWORK_POLICY;
+
+-- Generate PAT (done via Snow CLI)
+snow sql -q "ALTER USER AGENT_SERVICE_USER
+  ADD PROGRAMMATIC ACCESS TOKEN gtme_agent_token;"
+```
+
+**How it's used:**
+```python
+# In agent/api_client.py
+headers = {
+    "Authorization": f"Bearer {pat_token}",
+    "Content-Type": "application/json"
+}
+response = requests.post(
+    f"https://{account}.snowflakecomputing.com/api/v2/databases/..."
+)
+```
+
+---
+
+#### 2. Snowpark Python UDFs as Tools
+
+**What are Snowpark UDFs?**
+- Python functions that run inside Snowflake's compute environment
+- Can import packages (via Anaconda or uploaded files)
+- Can make HTTP requests (via External Access Integrations)
+- Can be called as SQL functions OR used as AI agent tools
+
+**Example: Google Docs UDF**
+
+Handler file (`tools/gsuite/handlers/docs_handler.py`):
+```python
+def create_google_doc(title: str, content: str = "") -> str:
+    import _snowflake
+    import requests
+
+    # Get OAuth token from secret
+    token = _snowflake.get_generic_secret_string('google_oauth_secret')
+
+    # Call Google Docs API
+    response = requests.post(
+        'https://docs.googleapis.com/v1/documents',
+        headers={'Authorization': f'Bearer {token}'},
+        json={'title': title}
+    )
+    return response.json()['documentId']
+```
+
+UDF registration (generated by `deployment/create_udfs.py`):
+```sql
+CREATE OR REPLACE FUNCTION CREATE_GOOGLE_DOC(title STRING, content STRING)
+RETURNS STRING
+LANGUAGE PYTHON
+RUNTIME_VERSION = '3.10'
+PACKAGES = ('requests', 'snowflake-snowpark-python')
+IMPORTS = ('@gtme_stage/docs_handler.py')
+HANDLER = 'docs_handler.create_google_doc'
+EXTERNAL_ACCESS_INTEGRATIONS = (GOOGLE_EXTERNAL_ACCESS)
+SECRETS = ('google_oauth_secret' = google_oauth_secret);
+```
+
+**Dual usage:**
+
+As SQL function:
+```sql
+SELECT CREATE_GOOGLE_DOC('My Document', 'Hello World');
+-- Returns: document_id
+```
+
+As AI agent tool:
+- Agent receives tool specification (JSON)
+- Agent decides when to call the tool
+- Agent calls: `CREATE_GOOGLE_DOC('Meeting Notes', '')`
+- UDF executes and returns result
+
+---
+
+#### 3. External Access Integrations
+
+**Purpose:**
+- By default, Snowpark UDFs cannot make HTTP requests
+- External Access Integrations whitelist allowed endpoints
+- Can attach secrets for authentication
+
+**Example: Google Workspace**
+
+Network rule (allowed endpoints):
+```sql
+CREATE OR REPLACE NETWORK RULE google_apis_network_rule
+  MODE = EGRESS
+  TYPE = HOST_PORT
+  VALUE_LIST = (
+    'docs.googleapis.com:443',
+    'sheets.googleapis.com:443',
+    'www.googleapis.com:443'
+  );
+```
+
+External access integration:
+```sql
+CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION GOOGLE_EXTERNAL_ACCESS
+  ALLOWED_NETWORK_RULES = (google_apis_network_rule)
+  ALLOWED_AUTHENTICATION_SECRETS = (google_oauth_secret)
+  ENABLED = TRUE;
+```
+
+Attached to UDF:
+```sql
+CREATE FUNCTION CREATE_GOOGLE_DOC(...)
+...
+EXTERNAL_ACCESS_INTEGRATIONS = (GOOGLE_EXTERNAL_ACCESS)
+SECRETS = ('google_oauth_secret' = google_oauth_secret);
+```
+
+**How it works:**
+1. UDF calls `requests.post('https://docs.googleapis.com/...')`
+2. Snowflake checks: Is `docs.googleapis.com` in allowed rules? ✅
+3. UDF accesses secret: `_snowflake.get_generic_secret_string(...)`
+4. Request made with OAuth token
+5. Response returned to UDF, then to agent
+
+---
+
+#### 4. Tool Specifications
+
+**What are tool specs?**
+- JSON definitions that tell the agent how to use each UDF
+- Include: function name, description, parameters, return type
+- Agent uses these to decide when and how to call tools
+
+**Example:** `tools/gsuite/specs/docs_tools.json`
+```json
+{
+  "type": "FUNCTION",
+  "function": {
+    "name": "CREATE_GOOGLE_DOC",
+    "description": "Creates a new Google Document",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "The title of the new document"
+        }
+      },
+      "required": ["title"]
+    }
+  }
+}
+```
+
+**How agent uses it:**
+1. User: "Create a doc called Meeting Notes"
+2. Agent: "I need CREATE_GOOGLE_DOC tool"
+3. Agent calls: `CREATE_GOOGLE_DOC(title='Meeting Notes')`
+4. UDF executes, returns document ID
+5. Agent responds with result
+
+---
+
+#### 5. Agent Deployment via REST API
+
+**Why REST API?**
+- Cortex AI Agents cannot be created via SQL (yet)
+- Must use Snowflake REST API
+- Requires Personal Access Token authentication
+
+**Endpoint:**
+```
+POST https://{account}.snowflakecomputing.com/api/v2/
+     databases/{db}/schemas/{schema}/agents/{name}
+```
+
+**Request body:**
+```json
+{
+  "tools": [
+    {
+      "tool_spec": {
+        "type": "FUNCTION",
+        "function": {
+          "name": "CREATE_GOOGLE_DOC",
+          "description": "Creates a new Google Document",
+          "parameters": { ... }
+        }
+      },
+      "tool_resource": {
+        "type": "FUNCTION",
+        "function": { "name": "CREATE_GOOGLE_DOC" }
+      }
+    }
+  ],
+  "orchestration": {
+    "model": "claude-sonnet-4",
+    "instructions": "You are a GTM Engineer..."
+  }
+}
+```
+
+**Key points:**
+- `tool_spec`: JSON definition (what agent sees)
+- `tool_resource`: UDF reference (what gets executed)
+- Must be in `snowflake_intelligence.agents` schema for Snowsight UI
+
+**What deployment does:**
+```python
+# In agent/create_agent.py
+from agent.tool_registry import ToolRegistry
+
+# Load all tool specs from JSON files
+registry = ToolRegistry()
+registry.discover_tools()  # Finds tools/*/specs/*.json
+
+# Create agent via REST API
+client.create_agent(
+    name="GTM_ENGINEER_AGENT",
+    tools=registry.get_all_tools(),
+    model="claude-sonnet-4"
+)
+```
+
+---
+
 ## 📁 Repository Structure
 
 ```
@@ -224,6 +568,8 @@ GTME/
 ├── .env.example                    # Environment template
 └── README.md                       # This file
 ```
+
+---
 
 ## 🎛️ Deployment Scenarios
 
