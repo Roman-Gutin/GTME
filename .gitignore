@@ -49,6 +49,10 @@ config.yaml
 google_oauth_tokens.json
 token.pickle
 *.pickle
+service-account-key.json
+*.key
+*.pem
+*.p12
 
 # OS
 .DS_Store
@@ -62,4 +66,26 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Temporary files
+nul
+*.tmp
+*.bak
+*.cache
+
+# CSV data files
+*.csv
+snow_snou_iv_history.csv
+
+# MCP/Augment configs
+augment_mcp_import*.json
+claude_desktop_config.json
+
+# Goose configs (keep only clean version)
+goose_config*.yaml
+!goose_config_clean.yaml
+
+# Deployment artifacts
+deployment/*.log
+deployment/agent_spec.json
 

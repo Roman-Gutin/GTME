@@ -49,13 +49,12 @@ print("CREATING GOOGLE OAUTH SECRET IN SNOWFLAKE")
 print("="*70)
 
 try:
-    # Connect to Snowflake
+    # Connect to Snowflake using PAT (programmatic access token as password)
     print("\n[1/4] Connecting to Snowflake...")
     conn = snowflake.connector.connect(
         account=SNOWFLAKE_ACCOUNT,
         user=SNOWFLAKE_USER,
-        authenticator='oauth',
-        token=SNOWFLAKE_PAT,
+        password=SNOWFLAKE_PAT,
         warehouse='AGENTS_DEMO_WH',
         database='AGENTS_DEMO',
         schema='PUBLIC',

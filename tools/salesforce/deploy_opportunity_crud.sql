@@ -73,28 +73,32 @@ $$;
 -- Function 3: Create Opportunity
 -- ============================================================================
 
-CREATE OR REPLACE FUNCTION sf_create_opportunity(opportunity_data_json VARCHAR)
+CREATE OR REPLACE FUNCTION SF_CREATE_OPPORTUNITY(OPPORTUNITY_DATA VARCHAR)
 RETURNS VARCHAR
 LANGUAGE PYTHON
 RUNTIME_VERSION = '3.10'
 PACKAGES = ('simple-salesforce==1.12.5')
 IMPORTS = ('@AGENTS_DEMO.PUBLIC.SALESFORCE_STAGE/salesforce_tools/core.py', '@AGENTS_DEMO.PUBLIC.SALESFORCE_STAGE/salesforce_tools/opportunities.py')
 HANDLER = 'create_opportunity_handler'
-EXTERNAL_ACCESS_INTEGRATIONS = (salesforce_api_integration)
-SECRETS = ('username' = salesforce_username, 'password' = salesforce_password, 'token' = salesforce_token)
+EXTERNAL_ACCESS_INTEGRATIONS = (SALESFORCE_API_INTEGRATION)
+SECRETS = ('password' = SALESFORCE_PASSWORD, 'token' = SALESFORCE_TOKEN, 'username' = SALESFORCE_USERNAME)
 AS
 $$
 import _snowflake
 import json
 from opportunities import OpportunityOperations
 
-def create_opportunity_handler(opportunity_data_json):
+def create_opportunity_handler(opportunity_data):
     try:
         username = _snowflake.get_generic_secret_string('username')
         password = _snowflake.get_generic_secret_string('password')
         token = _snowflake.get_generic_secret_string('token')
         sf = OpportunityOperations(username, password, token)
-        opportunity_data = json.loads(opportunity_data_json)
+
+        # Parse JSON string to dict
+        if isinstance(opportunity_data, str):
+            opportunity_data = json.loads(opportunity_data)
+
         opp_id = sf.create_opportunity(opportunity_data)
         return json.dumps({'id': opp_id, 'success': True})
     except Exception as e:
@@ -105,32 +109,35 @@ $$;
 -- Function 4: Update Opportunity
 -- ============================================================================
 
-CREATE OR REPLACE FUNCTION sf_update_opportunity(opportunity_id VARCHAR, update_data_json VARCHAR)
-RETURNS VARCHAR
+CREATE OR REPLACE FUNCTION SF_UPDATE_OPPORTUNITY(OPPORTUNITY_ID VARCHAR, UPDATE_DATA VARCHAR)
+RETURNS BOOLEAN
 LANGUAGE PYTHON
 RUNTIME_VERSION = '3.10'
 PACKAGES = ('simple-salesforce==1.12.5')
 IMPORTS = ('@AGENTS_DEMO.PUBLIC.SALESFORCE_STAGE/salesforce_tools/core.py', '@AGENTS_DEMO.PUBLIC.SALESFORCE_STAGE/salesforce_tools/opportunities.py')
 HANDLER = 'update_opportunity_handler'
-EXTERNAL_ACCESS_INTEGRATIONS = (salesforce_api_integration)
-SECRETS = ('username' = salesforce_username, 'password' = salesforce_password, 'token' = salesforce_token)
+EXTERNAL_ACCESS_INTEGRATIONS = (SALESFORCE_API_INTEGRATION)
+SECRETS = ('password' = SALESFORCE_PASSWORD, 'token' = SALESFORCE_TOKEN, 'username' = SALESFORCE_USERNAME)
 AS
 $$
 import _snowflake
 import json
 from opportunities import OpportunityOperations
 
-def update_opportunity_handler(opportunity_id, update_data_json):
+def update_opportunity_handler(opportunity_id, update_data):
     try:
         username = _snowflake.get_generic_secret_string('username')
         password = _snowflake.get_generic_secret_string('password')
         token = _snowflake.get_generic_secret_string('token')
         sf = OpportunityOperations(username, password, token)
-        update_data = json.loads(update_data_json)
-        success = sf.update_opportunity(opportunity_id, update_data)
-        return json.dumps({'success': success})
+
+        # Parse JSON string to dict
+        if isinstance(update_data, str):
+            update_data = json.loads(update_data)
+
+        return sf.update_opportunity(opportunity_id, update_data)
     except Exception as e:
-        return json.dumps({'error': str(e), 'success': False})
+        return False
 $$;
 
 -- ============================================================================

@@ -1,43 +1,48 @@
 # GTME - Go-To-Market Engineer AI Agent
 
-> **Solve CRM hygiene with AI.** A connected agent that automates the most common and dreadful problem in sales: keeping your CRM up to date.
+> **Automate CRM hygiene with AI.** Deploy a Snowflake Cortex AI agent with Google Workspace, Salesforce, and Web Search integrations.
 
-Deploy a fully functional AI agent with access to the tools sellers actually use—Google Workspace and Salesforce—in under 30 minutes.
+An AI agent that connects to the tools sellers actually use—Google Docs, Sheets, Drive, Salesforce, and web search—to automate the tedious work of keeping your CRM up to date and building pipeline.
+
+## ⚡ Quick Start
+
+```bash
+git clone https://github.com/Roman-Gutin/GTME.git
+cd GTME
+cp .env.example .env
+# Edit .env with your credentials
+
+# Deploy (Linux/Mac)
+./deploy.sh
+
+# Deploy (Windows)
+deploy.bat
+```
 
 ## 🎯 What You Get
 
-**A Connected Agent with access to the tools sellers use every day:**
+**Google Workspace Tools (22):**
+- **Google Docs** (5): Create, read, insert, append, delete
+- **Google Sheets** (6): Create, read, write, append, clear, delete
+- **Google Drive** (11): List, search, create folders, share, permissions, export
 
-- **📄 Google Workspace** (22 tools): Docs, Sheets, Drive
-- **💼 Salesforce** (11 tools): Accounts, Opportunities, Contacts, Discovery
+**Salesforce Tools (11):**
+- **Accounts**: Query, create, update, get details
+- **Opportunities**: Query, create, update, get details
+- **Discovery**: List objects, describe fields
 
-**Automate CRM Hygiene:**
-- Update Salesforce opportunities from meeting notes in Google Docs
-- Create pipeline reports in Google Sheets from Salesforce data
-- Sync account information between systems automatically
-- Generate proposals in Google Docs using Salesforce opportunity data
-- Keep contact information current across both platforms
+**Web Search Tools (8):**
+- **Perplexity**: AI-powered web search
+- **FindAll**: Parallel entity discovery for prospecting (create, status, results, extend, enrich, cancel, manage)
 
-> **Coming Next:** Slack integration, Web Search, and Outbound email automation
+**Use Cases:**
+- Build pipeline by finding companies hosting events in your target market
+- Extract action items from meeting notes → Update Salesforce
+- Generate pipeline reports in Google Sheets
+- Create customer proposals from templates
+- Research prospects and enrich Salesforce records
 
-## 📊 Tool Breakdown
-
-### Google Workspace (22 tools)
-- **Google Docs** (5): Create, read, insert, delete, replace text
-- **Google Sheets** (6): Create, read, write, append, update, clear
-- **Google Drive** (11): Folders, files, sharing, metadata, permissions
-
-### Salesforce (11 tools)
-- **Accounts** (4): Query, get, create, summarize
-- **Opportunities** (4): Get, create, update, pipeline summary
-- **Contacts** (1): Get contact details
-- **Discovery** (2): List objects, get metadata
-
-## 🏗️ Architecture Overview
-
-### How It Works
-
-This system deploys a **Snowflake Cortex AI Agent** that uses **Snowpark Python UDFs** as tools to interact with external APIs.
+## 🏗️ How It Works
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -45,9 +50,8 @@ This system deploys a **Snowflake Cortex AI Agent** that uses **Snowpark Python 
 │                                                             │
 │  ┌──────────────────────────────────────────────────────┐  │
 │  │         Cortex AI Agent (Claude Sonnet 4)            │  │
-│  │  - Created via REST API                              │  │
-│  │  - Authenticated with Personal Access Token (PAT)    │  │
-│  │  - Receives tool specifications (JSON)               │  │
+│  │  - Orchestrates tool calls                           │  │
+│  │  - Maintains conversation context                    │  │
 │  └────────────┬─────────────────────────────────────────┘  │
 │               │ Calls tools                                 │
 │               ▼                                             │
@@ -350,26 +354,17 @@ deploy.bat
 
 The script will:
 1. ✅ Validate prerequisites and check credentials
-2. ✅ Create Snowflake infrastructure (user, role, database, warehouse)
-3. ✅ Deploy selected integrations:
-   - Google Workspace: OAuth setup, upload handlers, create 22 UDFs
-   - Salesforce: Upload handlers, create secrets, create 11 UDFs
-4. ✅ Create the GTME Cortex AI Agent with selected tools
-5. ✅ Run verification tests
+2. ✅ Deploy Salesforce UDFs (if enabled)
+3. ✅ Deploy Web Search UDFs (Perplexity + FindAll, if enabled)
+4. ✅ Create the GTME Cortex AI Agent with all tools
 
-### 5. Test Your Tools (Optional)
-
-**Test Google Workspace:**
+**Note:** Google Workspace requires manual OAuth setup:
 ```bash
-snow sql -f deployment/test_tools.sql
+python tools/gsuite/get_oauth_url.py
+python tools/gsuite/create_oauth_secret.py <refresh_token>
 ```
 
-**Test Salesforce:**
-```bash
-snow sql -f tools/salesforce/test_sfdc_tools.sql
-```
-
-### 6. Access Your Agent
+### 5. Access Your Agent
 
 1. Go to [Snowsight](https://app.snowflake.com/)
 2. Navigate to **AI & ML** → **Cortex** → **Agents**
@@ -681,30 +676,34 @@ client.create_agent(
 ```
 GTME/
 ├── agent/                          # Agent creation and management
-│   ├── create_agent.py            # Main agent creation script
-│   ├── api_client.py              # Snowflake REST API client
-│   ├── tool_registry.py           # Tool discovery and validation
-│   └── config.py                  # Agent configuration
+│   ├── build_agent.py             # Main agent builder script
+│   ├── configs/                   # Agent configurations
+│   │   └── gtm_engineer.py        # GTM Engineer agent config
+│   └── tool_specs/                # Tool specifications (Python)
+│       ├── gsuite_tools.py        # Google Workspace tool specs
+│       ├── salesforce_tools.py    # Salesforce tool specs
+│       ├── perplexity_tools.py    # Perplexity search tool specs
+│       └── parallel_web_tools.py  # FindAll web search tool specs
 │
 ├── tools/                          # Tool integrations
 │   ├── gsuite/                    # Google Workspace (22 tools)
 │   │   ├── handlers/              # Python API wrappers
-│   │   ├── specs/                 # Tool specifications (JSON)
-│   │   ├── get_oauth_url.py       # OAuth helper
+│   │   ├── get_oauth_url.py       # OAuth URL generator
+│   │   ├── generate_oauth_token.py # Token generator
 │   │   └── create_oauth_secret.py # Secret creation
 │   │
-│   └── salesforce/                # Salesforce CRM (11 tools)
-│       ├── salesforce_tools/      # Python API wrappers
-│       ├── deploy_to_snowflake.sh # Deployment script
-│       ├── snowflake_setup.sql    # UDF creation
-│       └── test_sfdc_tools.sql    # Test suite
-│
-├── deployment/                     # Deployment automation
-│   ├── setup_snowflake.sql        # Infrastructure setup
-│   ├── deploy_gsuite.py           # Google Workspace deployment
-│   ├── create_udfs.py             # Dynamic UDF generation
-│   ├── test_deployment.sql        # Infrastructure verification
-│   └── test_tools.sql             # Google Workspace tests
+│   ├── salesforce/                # Salesforce CRM (11 tools)
+│   │   ├── salesforce_tools/      # Python API wrappers
+│   │   ├── deploy_*.sql           # UDF deployment scripts
+│   │   └── snowflake_setup.sql    # Infrastructure setup
+│   │
+│   └── web_search/                # Web search tools
+│       ├── perplexity/            # Perplexity AI search
+│       │   ├── handlers/          # Python handler
+│       │   └── deploy_perplexity.sql
+│       └── parallel_web_systems/  # FindAll entity discovery
+│           ├── handlers/          # Python handler
+│           └── deploy_*.sql       # UDF deployment scripts
 │
 ├── deploy.sh                       # Master deployment (Linux/Mac)
 ├── deploy.bat                      # Master deployment (Windows)
@@ -972,16 +971,15 @@ snow --version
 
 The architecture is designed to be extensible. To add new tools (e.g., HubSpot, Slack, Jira):
 
-1. **Create tool specifications** in `tools/{integration}/specs/*.json`
+1. **Create tool specifications** in `agent/tool_specs/{integration}_tools.py`
 2. **Implement Python handlers** in `tools/{integration}/handlers/`
-3. **Create deployment script** following the gsuite pattern
+3. **Create SQL deployment script** in `tools/{integration}/deploy_*.sql`
 4. **Add to master deployment** in `deploy.sh` and `deploy.bat`
-5. **Update agent configuration** in `agent/config.py`
+5. **Update agent configuration** in `agent/configs/gtm_engineer.py`
 
 See `tools/gsuite/` for reference implementation.
-4. Run `python agent/create_agent.py --force`
 
-The tool registry automatically discovers and validates all tools.
+Run `python agent/build_agent.py gtm_engineer --delete` to rebuild the agent.
 
 ---
 

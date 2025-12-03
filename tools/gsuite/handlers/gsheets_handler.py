@@ -2,41 +2,46 @@
 Google Sheets Handler for Snowflake UDFs
 
 This module provides a comprehensive handler class for Google Sheets API operations.
-All methods are designed to work as Snowflake UDFs with OAuth2 authentication.
+All methods are designed to work as Snowflake UDFs with Service Account authentication.
 
 Author: Snowflake Integration Team
-Version: 1.0.0
+Version: 2.0.0
 """
 
 import json
 import requests
+try:
+    from auth_helper_oauth import OAuthHelper
+except ImportError:
+    from auth_helper import ServiceAccountAuth as OAuthHelper
 
 
 class GSheetsHandler:
     """
     Handler class for Google Sheets API operations in Snowflake UDFs.
-    
-    All methods use _snowflake.get_oauth_access_token('cred') for authentication
+
+    All methods use Service Account authentication via auth_helper.py
     and return structured JSON responses with success/error handling.
     """
-    
+
     BASE_URL = "https://sheets.googleapis.com/v4/spreadsheets"
     TIMEOUT = 60  # seconds
-    
+
     def __init__(self, snowflake_module=None):
         """
         Initialize the handler.
-        
+
         Args:
             snowflake_module: The _snowflake module (injected in Snowflake UDF context)
         """
         self._snowflake = snowflake_module
-    
+        self._auth = OAuthHelper(snowflake_module) if snowflake_module else None
+
     def _get_access_token(self):
-        """Get OAuth access token from Snowflake."""
-        if self._snowflake is None:
+        """Get access token from Service Account."""
+        if self._auth is None:
             raise Exception("Snowflake module not initialized")
-        return self._snowflake.get_oauth_access_token('cred')
+        return self._auth.get_access_token()
     
     def _make_request(self, method, url, data=None, operation_name='API_CALL'):
         """
