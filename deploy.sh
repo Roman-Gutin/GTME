@@ -40,34 +40,42 @@ PYTHON=$(command -v python3 || command -v python)
 print_ok "Prerequisites OK"
 
 # ============================================================================
-# Deploy UDFs
+# Step 1: Snowflake Infrastructure (run once)
 # ============================================================================
-print_header "Deploying UDFs to Snowflake"
+print_header "Setting up Snowflake Infrastructure"
+
+if [ "${SKIP_INFRA_SETUP:-false}" = "false" ]; then
+    snow sql -f deployment/snowflake_setup.sql || print_warn "Infrastructure may already exist"
+    print_ok "Infrastructure ready"
+else
+    print_warn "Skipping infrastructure setup (SKIP_INFRA_SETUP=true)"
+fi
+
+# ============================================================================
+# Step 2: Deploy Tool Integrations
+# ============================================================================
+print_header "Deploying Tool Integrations"
 
 # Google Workspace (if enabled)
 if [ "${DEPLOY_GOOGLE_WORKSPACE:-true}" = "true" ]; then
-    print_warn "Google Workspace deployment requires manual OAuth setup"
-    echo "  Run: python tools/gsuite/get_oauth_url.py"
-    echo "  Then: python tools/gsuite/create_oauth_secret.py <refresh_token>"
+    print_warn "Google Workspace requires manual OAuth setup first:"
+    echo "  1. python tools/gsuite/get_oauth_url.py"
+    echo "  2. python tools/gsuite/create_oauth_secret.py <refresh_token>"
 fi
 
 # Salesforce (if enabled)
 if [ "${DEPLOY_SALESFORCE:-true}" = "true" ]; then
-    print_header "Deploying Salesforce Tools"
-    snow sql -f tools/salesforce/snowflake_setup.sql || print_warn "Setup may already exist"
-    snow sql -f tools/salesforce/deploy_opportunity_crud.sql
-    snow sql -f tools/salesforce/deploy_account_crud.sql
-    print_ok "Salesforce UDFs deployed"
+    print_header "Deploying Salesforce"
+    snow sql -f tools/salesforce/snowflake_setup.sql
+    print_ok "Salesforce deployed"
 fi
 
 # Web Search (if enabled)
 if [ "${DEPLOY_WEB_SEARCH:-true}" = "true" ]; then
-    print_header "Deploying Web Search Tools"
+    print_header "Deploying Web Search"
     snow sql -f tools/web_search/perplexity/deploy_perplexity.sql
-    snow sql -f tools/web_search/parallel_web_systems/deploy_udfs.sql
-    snow sql -f tools/web_search/parallel_web_systems/deploy_udfs2.sql
-    snow sql -f tools/web_search/parallel_web_systems/deploy_manage_proc.sql
-    print_ok "Web Search UDFs deployed"
+    snow sql -f tools/web_search/parallel_web_systems/deploy_findall.sql
+    print_ok "Web Search deployed"
 fi
 
 # ============================================================================

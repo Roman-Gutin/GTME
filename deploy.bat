@@ -29,24 +29,30 @@ if "%SNOWFLAKE_PAT%"=="" (echo [ERROR] SNOWFLAKE_PAT not set && exit /b 1)
 echo [OK] Prerequisites OK
 echo.
 
-REM Deploy Salesforce
+REM Step 1: Infrastructure setup (run once)
+echo === Setting up Snowflake Infrastructure ===
+if not "%SKIP_INFRA_SETUP%"=="true" (
+    snow sql -f deployment\snowflake_setup.sql
+    echo [OK] Infrastructure ready
+) else (
+    echo [SKIP] Infrastructure setup skipped
+)
+echo.
+
+REM Step 2: Deploy Salesforce
 if not "%DEPLOY_SALESFORCE%"=="false" (
-    echo === Deploying Salesforce Tools ===
+    echo === Deploying Salesforce ===
     snow sql -f tools\salesforce\snowflake_setup.sql
-    snow sql -f tools\salesforce\deploy_opportunity_crud.sql
-    snow sql -f tools\salesforce\deploy_account_crud.sql
-    echo [OK] Salesforce UDFs deployed
+    echo [OK] Salesforce deployed
     echo.
 )
 
-REM Deploy Web Search
+REM Step 3: Deploy Web Search
 if not "%DEPLOY_WEB_SEARCH%"=="false" (
-    echo === Deploying Web Search Tools ===
+    echo === Deploying Web Search ===
     snow sql -f tools\web_search\perplexity\deploy_perplexity.sql
-    snow sql -f tools\web_search\parallel_web_systems\deploy_udfs.sql
-    snow sql -f tools\web_search\parallel_web_systems\deploy_udfs2.sql
-    snow sql -f tools\web_search\parallel_web_systems\deploy_manage_proc.sql
-    echo [OK] Web Search UDFs deployed
+    snow sql -f tools\web_search\parallel_web_systems\deploy_findall.sql
+    echo [OK] Web Search deployed
     echo.
 )
 
