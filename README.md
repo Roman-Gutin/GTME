@@ -32,15 +32,12 @@ deploy.bat
 - **Discovery**: List objects, describe fields
 
 **Web Search Tools (8):**
-- **Perplexity**: AI-powered web search
-- **FindAll**: Parallel entity discovery for prospecting (create, status, results, extend, enrich, cancel, manage)
-
+- **Perplexity**: AI-powered web search -> Fast Data Look Up
+- **FindAll**: Build a table from web data. -> Long Running and therefore more Exhaustive.
 **Use Cases:**
 - Build pipeline by finding companies hosting events in your target market
-- Extract action items from meeting notes → Update Salesforce
-- Generate pipeline reports in Google Sheets
-- Create customer proposals from templates
-- Research prospects and enrich Salesforce records
+- Automated CRM Hygiene 
+
 
 ## 🏗️ How It Works
 
