@@ -321,26 +321,84 @@ def cancel_handler(findall_id):
 $$;
 
 -- ============================================================================
--- Step 5: Verify Deployment
+-- Step 5: Create FINDALL_RUNS Tracking Table (Optional)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS FINDALL_RUNS (
+    FINDALL_ID VARCHAR(100) PRIMARY KEY,
+    OBJECTIVE VARCHAR(2000),
+    ENTITY_TYPE VARCHAR(100),
+    MATCH_CONDITIONS VARIANT,
+    GENERATOR VARCHAR(50),
+    MATCH_LIMIT INTEGER,
+    STATUS VARCHAR(50),
+    IS_ACTIVE BOOLEAN,
+    MATCHED_COUNT INTEGER,
+    RESULTS VARIANT,
+    ENRICHMENTS VARIANT,
+    CREATED_AT TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+    UPDATED_AT TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+    CREATED_BY VARCHAR(100) DEFAULT CURRENT_USER()
+);
+
+-- ============================================================================
+-- Step 6: Create MANAGE_FINDALL_RUN Procedure (Optional)
+-- ============================================================================
+
+CREATE OR REPLACE PROCEDURE MANAGE_FINDALL_RUN(ACTION VARCHAR, FINDALL_ID VARCHAR, PAYLOAD VARCHAR)
+RETURNS VARIANT
+LANGUAGE JAVASCRIPT
+EXECUTE AS CALLER
+AS
+$$
+var payload = JSON.parse(PAYLOAD || '{}');
+var result = {};
+var stmt, rs, binds;
+
+if (ACTION === 'log') {
+    binds = [FINDALL_ID, payload.objective, payload.entity_type, JSON.stringify(payload.match_conditions), payload.generator, payload.match_limit];
+    stmt = snowflake.createStatement({
+        sqlText: "INSERT INTO FINDALL_RUNS (FINDALL_ID, OBJECTIVE, ENTITY_TYPE, MATCH_CONDITIONS, GENERATOR, MATCH_LIMIT, STATUS, IS_ACTIVE) SELECT ?, ?, ?, PARSE_JSON(?), ?, ?, 'created', TRUE",
+        binds: binds
+    });
+    stmt.execute();
+    result = {success: true, action: 'logged', findall_id: FINDALL_ID};
+}
+else if (ACTION === 'update_status') {
+    binds = [payload.status, payload.is_active, payload.matched_count, FINDALL_ID];
+    stmt = snowflake.createStatement({
+        sqlText: "UPDATE FINDALL_RUNS SET STATUS = ?, IS_ACTIVE = ?, MATCHED_COUNT = ?, UPDATED_AT = CURRENT_TIMESTAMP() WHERE FINDALL_ID = ?",
+        binds: binds
+    });
+    stmt.execute();
+    result = {success: true, action: 'status_updated', findall_id: FINDALL_ID};
+}
+else if (ACTION === 'get_recent') {
+    var limit = payload.limit || 10;
+    stmt = snowflake.createStatement({
+        sqlText: "SELECT FINDALL_ID, OBJECTIVE, ENTITY_TYPE, STATUS, MATCHED_COUNT, CREATED_AT FROM FINDALL_RUNS ORDER BY CREATED_AT DESC LIMIT " + limit
+    });
+    rs = stmt.execute();
+    var runs = [];
+    while (rs.next()) {
+        runs.push({
+            findall_id: rs.getColumnValue('FINDALL_ID'),
+            objective: rs.getColumnValue('OBJECTIVE'),
+            status: rs.getColumnValue('STATUS'),
+            matched_count: rs.getColumnValue('MATCHED_COUNT')
+        });
+    }
+    result = {success: true, runs: runs};
+}
+else {
+    result = {success: false, error: 'Unknown action: ' + ACTION};
+}
+return result;
+$$;
+
+-- ============================================================================
+-- Step 7: Verify Deployment
 -- ============================================================================
 
 SHOW FUNCTIONS LIKE '%FINDALL%' IN SCHEMA AGENTS_DEMO.PUBLIC;
-
--- ============================================================================
--- Step 6: Test Examples
--- ============================================================================
--- Create a FindAll run to find AI companies:
--- SELECT CREATE_FINDALL_RUN(
---     'Find AI companies that raised Series A funding in 2024',
---     'companies',
---     '[{"name": "ai_company_check", "description": "Company develops AI products"}, {"name": "series_a_2024", "description": "Raised Series A in 2024"}]',
---     'core',
---     10
--- ) AS result;
-
--- Check status:
--- SELECT GET_FINDALL_STATUS('findall_xxx') AS result;
-
--- Get results:
--- SELECT GET_FINDALL_RESULTS('findall_xxx') AS result;
 
